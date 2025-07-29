@@ -77,14 +77,13 @@
         // Initialize Stockfish with error handling
         function initializeStockfish() {
             try {
-                // Initialize Stockfish with wasmPath
-                stockfish = STOCKFISH({
-                    wasmPath: 'js/stockfish.wasm',
-                    onmessage: function(event) {
-                        const message = event.data || event;
-                        if (typeof message === 'string' && message === 'uciok') {
-                            statusElement.innerHTML = 'Stockfish loaded. Make the best move for White!';
-                        }
+                // Stockfish.js uses a Worker directly
+                stockfish = new Worker('js/stockfish.js');
+                
+                stockfish.addEventListener('message', function(e) {
+                    const message = e.data;
+                    if (typeof message === 'string' && message === 'uciok') {
+                        statusElement.innerHTML = 'Stockfish loaded. Make the best move for White!';
                     }
                 });
                 
