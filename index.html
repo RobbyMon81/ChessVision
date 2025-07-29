@@ -47,6 +47,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish-16.0.0-lite.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
         #board { margin: 20px auto; }
@@ -76,26 +77,21 @@
         // Initialize Stockfish with error handling
         function initializeStockfish() {
             try {
-                // Check if we're on a secure context
-                if (!window.isSecureContext) {
-                    throw new Error('Stockfish requires HTTPS. Currently running on ' + window.location.protocol);
+                // Use the global Stockfish function if available
+                if (typeof Stockfish === 'function') {
+                    stockfish = Stockfish();
+                    
+                    stockfish.onmessage = function(event) {
+                        const message = event.data || event;
+                        if (typeof message === 'string' && message === 'uciok') {
+                            statusElement.innerHTML = 'Stockfish loaded. Make the best move for White!';
+                        }
+                    };
+                    
+                    stockfish.postMessage('uci');
+                } else {
+                    throw new Error('Stockfish not loaded');
                 }
-                
-                stockfish = new Worker('https://cdn.jsdelivr.net/npm/stockfish@15.1.0/dist/stockfish.min.js');
-                
-                stockfish.onerror = function(e) {
-                    console.error('Stockfish Worker Error:', e);
-                    statusElement.innerHTML = 'Stockfish unavailable. Make your best move for White!';
-                    stockfish = null;
-                };
-                
-                stockfish.onmessage = function(e) {
-                    if (e.data === 'uciok') {
-                        statusElement.innerHTML = 'Stockfish loaded. Make the best move for White!';
-                    }
-                };
-                
-                stockfish.postMessage('uci');
                 
             } catch (e) {
                 statusElement.innerHTML = 'Stockfish unavailable. Make your best move for White!';
@@ -248,8 +244,11 @@
         }
 
         // Initialize first position and Stockfish
-        initializeStockfish();
-        generateNewPosition();
+        // Wait a moment for Stockfish script to load
+        setTimeout(function() {
+            initializeStockfish();
+            generateNewPosition();
+        }, 100);
     </script>
 </body>
 </html>
