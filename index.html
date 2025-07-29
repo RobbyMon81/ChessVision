@@ -47,7 +47,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.12.0/chess.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/stockfish@16.0.0/src/stockfish-16.0.0-lite.js"></script>
+    <script src="js/stockfish.js"></script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
         #board { margin: 20px auto; }
@@ -77,21 +77,18 @@
         // Initialize Stockfish with error handling
         function initializeStockfish() {
             try {
-                // Use the global Stockfish function if available
-                if (typeof Stockfish === 'function') {
-                    stockfish = Stockfish();
-                    
-                    stockfish.onmessage = function(event) {
+                // Initialize Stockfish with wasmPath
+                stockfish = STOCKFISH({
+                    wasmPath: 'js/stockfish.wasm',
+                    onmessage: function(event) {
                         const message = event.data || event;
                         if (typeof message === 'string' && message === 'uciok') {
                             statusElement.innerHTML = 'Stockfish loaded. Make the best move for White!';
                         }
-                    };
-                    
-                    stockfish.postMessage('uci');
-                } else {
-                    throw new Error('Stockfish not loaded');
-                }
+                    }
+                });
+                
+                stockfish.postMessage('uci');
                 
             } catch (e) {
                 statusElement.innerHTML = 'Stockfish unavailable. Make your best move for White!';
