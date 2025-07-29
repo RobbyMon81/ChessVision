@@ -76,11 +76,30 @@
         // Initialize Stockfish with error handling
         function initializeStockfish() {
             try {
+                // Check if we're on a secure context
+                if (!window.isSecureContext) {
+                    throw new Error('Stockfish requires HTTPS. Currently running on ' + window.location.protocol);
+                }
+                
                 stockfish = new Worker('https://cdn.jsdelivr.net/npm/stockfish@15.1.0/dist/stockfish.min.js');
-                statusElement.innerHTML = 'Stockfish loaded successfully. Make the best move for White.';
+                
+                stockfish.onerror = function(e) {
+                    console.error('Stockfish Worker Error:', e);
+                    statusElement.innerHTML = 'Stockfish unavailable. Make your best move for White!';
+                    stockfish = null;
+                };
+                
+                stockfish.onmessage = function(e) {
+                    if (e.data === 'uciok') {
+                        statusElement.innerHTML = 'Stockfish loaded. Make the best move for White!';
+                    }
+                };
+                
+                stockfish.postMessage('uci');
+                
             } catch (e) {
-                statusElement.innerHTML = 'Error loading Stockfish: ' + e.message + '. Please ensure this page is served over http:// or https:// (not file://).';
-                console.error('Stockfish Worker Error:', e);
+                statusElement.innerHTML = 'Stockfish unavailable. Make your best move for White!';
+                console.error('Stockfish initialization failed:', e);
                 stockfish = null;
             }
         }
@@ -162,7 +181,7 @@
 
             board.position(chess.fen());
             fenElement.innerHTML = 'FEN: ' + chess.fen();
-            statusElement.innerHTML = stockfish ? 'Make the best move for White.' : 'Stockfish not loaded. Please serve over http:// or https://.';
+            statusElement.innerHTML = 'Make the best move for White!';
             pendingMove = null;
         }
 
@@ -188,12 +207,17 @@
             }
 
             if (!stockfish) {
-                statusElement.innerHTML = 'Stockfish engine not available. Please ensure this page is served over http:// or https://.';
+                // Manual evaluation when Stockfish isn't available
+                statusElement.innerHTML = 'Move recorded: ' + pendingMove.san + '. Click "New Position" to continue.';
                 return;
             }
 
+            // Save the current position and get pre-move position
+            chess.undo(); // Undo to get the position before the move
+            const preMovePosition = chess.fen();
+            
             stockfish.postMessage('uci');
-            stockfish.postMessage('position fen ' + chess.fen());
+            stockfish.postMessage('position fen ' + preMovePosition);
             stockfish.postMessage('go movetime 1000');
 
             stockfish.onmessage = function(event) {
@@ -203,19 +227,22 @@
                     const bestMoveFrom = bestMove.slice(0, 2);
                     const bestMoveTo = bestMove.slice(2, 4);
                     const promotion = bestMove.length > 4 ? bestMove.slice(4, 5) : undefined;
+                    
+                    // Re-apply the user's move
+                    chess.move(pendingMove);
+                    
                     if (pendingMove.from === bestMoveFrom && pendingMove.to === bestMoveTo) {
                         statusElement.innerHTML = 'Correct! This is the best move.';
                     } else {
-                        // Undo player's move to calculate best move SAN
+                        // Calculate best move SAN
                         chess.undo();
                         const bestMoveObj = chess.move({ from: bestMoveFrom, to: bestMoveTo, promotion: promotion });
                         const bestMoveSan = bestMoveObj ? bestMoveObj.san : 'unknown';
                         chess.undo();
-                        statusElement.innerHTML = `Incorrect. Your move: ${pendingMove.san}. Best move: ${bestMoveSan}.`;
-                        board.position(chess.fen());
+                        chess.move(pendingMove); // Re-apply user's move
+                        statusElement.innerHTML = `Your move: ${pendingMove.san}. Best move was: ${bestMoveSan}.`;
                     }
-                    stockfish.terminate();
-                    initializeStockfish(); // Reinitialize Stockfish
+                    board.position(chess.fen());
                 }
             };
         }
