@@ -59,6 +59,10 @@
 </head>
 <body>
     <h1>Chess Vision Trainer</h1>
+    <p style="max-width: 600px; margin: 10px auto; font-size: 14px;">
+        Practice your chess vision! Three random black pieces are placed on the board. 
+        Find the best move for White. No chess knowledge required beyond how pieces move.
+    </p>
     <div id="board" style="width: 400px"></div>
     <div id="status"></div>
     <div id="fen"></div>
@@ -105,8 +109,8 @@
             pieceTheme: 'img/chesspieces/{piece}.svg'
         });
 
-        // Piece lists
-        const blackPieces = ['q', 'r', 'r', 'b', 'b', 'n', 'n', 'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'];
+        // Piece lists - exact distribution as specified
+        const blackPieceList = ['q', 'r', 'r', 'b', 'b', 'n', 'n', 'p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'];
         const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
         const ranks = ['1', '2', '3', '4', '5', '6', '7', '8'];
 
@@ -120,29 +124,39 @@
                 chess.clear();
                 attempts++;
 
-                // Place 3 random black pieces
-                let availablePieces = [...blackPieces];
+                // Place 3 random black pieces from the exact list
+                let availablePieces = [...blackPieceList];
                 let placedSquares = [];
+                
+                // Place exactly 3 black pieces
                 for (let i = 0; i < 3; i++) {
-                    if (availablePieces.length === 0) break;
-                    const pieceIndex = Math.floor(Math.random() * availablePieces.length);
-                    const piece = availablePieces.splice(pieceIndex, 1)[0];
-                    let square;
-                    if (piece === 'p') {
-                        // Pawns only on ranks 2-7
-                        const rank = ranks.slice(1, 7)[Math.floor(Math.random() * 6)];
-                        const file = files[Math.floor(Math.random() * 8)];
-                        square = file + rank;
-                    } else {
-                        const rank = ranks[Math.floor(Math.random() * 8)];
-                        const file = files[Math.floor(Math.random() * 8)];
-                        square = file + rank;
-                    }
-                    if (!placedSquares.includes(square)) {
-                        chess.put({ type: piece, color: 'b' }, square);
-                        placedSquares.push(square);
-                    } else {
-                        i--; // Retry if square is occupied
+                    let placed = false;
+                    let attempts = 0;
+                    
+                    while (!placed && attempts < 50) {
+                        attempts++;
+                        const pieceIndex = Math.floor(Math.random() * availablePieces.length);
+                        const piece = availablePieces[pieceIndex];
+                        let square;
+                        
+                        if (piece === 'p') {
+                            // Black pawns can only occupy ranks 2-7 (as specified)
+                            const rank = ranks.slice(1, 7)[Math.floor(Math.random() * 6)];
+                            const file = files[Math.floor(Math.random() * 8)];
+                            square = file + rank;
+                        } else {
+                            // Other pieces can be anywhere
+                            const rank = ranks[Math.floor(Math.random() * 8)];
+                            const file = files[Math.floor(Math.random() * 8)];
+                            square = file + rank;
+                        }
+                        
+                        if (!placedSquares.includes(square)) {
+                            chess.put({ type: piece, color: 'b' }, square);
+                            placedSquares.push(square);
+                            availablePieces.splice(pieceIndex, 1);
+                            placed = true;
+                        }
                     }
                 }
 
